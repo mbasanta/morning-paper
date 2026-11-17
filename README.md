@@ -41,7 +41,8 @@ before print time). Keep it plugged in and leave the Claude app open.
 Claude go to Customize > Skills > + > Upload a skill. (Skills need code execution turned on under
 Settings > Capabilities.)
 
-**Claude Code:** copy the `morning-paper` folder into `~/.claude/skills/`.
+**Claude Code:** copy the [`morning-paper`](morning-paper) folder into `~/.claude/skills/` on
+macOS/Linux, or `%USERPROFILE%\.claude\skills\` on Windows.
 
 Then say: **"Set up my morning paper."**
 
@@ -49,11 +50,19 @@ Then say: **"Set up my morning paper."**
 
 - Claude with connectors for whatever sections you choose (calendar, email, your to-do app). Setup
   only offers sources you have connected.
-- Google Chrome (to render the page to PDF).
-- For printing: a printer your computer can reach (macOS or Linux).
+- Google Chrome or Chromium to render PDFs. On Windows or macOS, Microsoft Edge also works;
+  Windows can use its existing Edge installation.
+- On macOS/Linux: Bash and Python 3 for the renderer, and `lp`/CUPS for printing.
+- On Windows: PowerShell 5.1 or later (included with Windows). For automatic printing, also install
+  [SumatraPDF](https://www.sumatrapdfreader.org/free-pdf-reader), or use its portable version.
+  Windows does not need WSL, Bash or Python. See the [Windows guide](morning-paper/references/windows.md)
+  for rendering, printer selection, duplex printing and troubleshooting.
+- For printing: a printer your computer can reach from its local execution environment. A remote
+  code-execution sandbox cannot access your Windows printer.
 - For a paper that is ready when you wake up: the Claude desktop app open and your computer awake at
   print time. On a Mac: System Settings > Battery > Options > "Prevent automatic sleeping on power
-  adapter when the display is off".
+  adapter when the display is off". On Windows: Settings > System > Power & battery > Screen and sleep
+  (Power & sleep on Windows 10), then set plugged-in sleep to Never and stay signed in.
 
 ## Privacy
 
@@ -61,13 +70,28 @@ Your paper is built from your own calendar, inbox and to-do list, so treat it as
 The skill reads your data while building and does not change anything. The only email it ever sends
 is your own paper, to your own address, if you choose email delivery. Replies to people you circle are
 saved as drafts for you to review, never sent. Everything it makes stays in a folder on your computer
-(`~/Documents/Morning Paper/` by default).
+(`~/Documents/Morning Paper/` by default on macOS/Linux; `Morning Paper` inside your Windows Documents
+folder, including a redirected/OneDrive Documents folder, on Windows).
 
 ## What's inside
 
-- `morning-paper/SKILL.md`: the setup interview, daily build and reply loop
-- `morning-paper/assets/template.html`: the one-page layout
-- `morning-paper/references/`: what each section does, and the config skeleton
-- `morning-paper/scripts/render_pdf.sh`: HTML to PDF, with a one-page check
+- [`morning-paper/SKILL.md`](morning-paper/SKILL.md): the setup interview, daily build and reply loop
+- [`morning-paper/assets/template.html`](morning-paper/assets/template.html): the one-page layout
+- [`morning-paper/references/`](morning-paper/references/): sections, config skeleton and Windows guide
+- [`morning-paper/scripts/render_pdf.sh`](morning-paper/scripts/render_pdf.sh): macOS/Linux HTML to PDF, with a page count
+- [`morning-paper/scripts/render_pdf.ps1`](morning-paper/scripts/render_pdf.ps1): Windows HTML to PDF, with a page count
+- [`morning-paper/scripts/print_pdf.ps1`](morning-paper/scripts/print_pdf.ps1): Windows automatic printing
+
+## Windows checks
+
+From Windows PowerShell with its bundled Pester module and Chrome or Edge installed:
+
+```powershell
+$result = Invoke-Pester -Script .\tests\windows.Tests.ps1 -PassThru
+if ($result.FailedCount -gt 0) { throw 'Windows tests failed.' }
+```
+
+The tests render local sample HTML and check failure handling. Printing uses mocks and a test
+executable; no jobs are sent to a real printer.
 
 MIT licensed. Fork it and make it yours.

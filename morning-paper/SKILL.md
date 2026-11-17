@@ -37,7 +37,9 @@ The skill has three modes. Work out which one applies:
 3. **Reply**: the reader sends a photo of a printed edition, or replies to an emailed edition.
    Follow `Reply`.
 
-The paper folder defaults to `~/Documents/Morning Paper/`. Look there for `config.md` first.
+The paper folder defaults to `~/Documents/Morning Paper/` on macOS/Linux. On Windows, use
+`Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Morning Paper'` so redirected Documents
+folders work too. Look there for `config.md` first, unless a paper-folder path was supplied.
 
 ---
 
@@ -52,6 +54,10 @@ Before asking, check which connectors this Claude has (calendar, email, Notion, 
 Tasks, and so on). Only offer sources that actually work, and say plainly when one needs connecting
 first (claude.ai Settings > Connectors). A section with no working source should be left off rather
 than printed empty every day.
+
+Also identify the operating system of the computer that will render and print, and whether the tools
+can access that computer (a remote sandbox is not the Windows host). Use Bash on macOS/Linux and
+PowerShell on Windows; follow `references/windows.md` for Windows prerequisites and commands.
 
 **1. Sections.** "Which sections do you want on your paper?" Multi-select, in two groups
 (see `references/sections.md` for what each one does and needs):
@@ -73,8 +79,10 @@ Follow-ups, only for sections they picked:
 
 **2. Time and delivery.** "What time should it arrive?" Options: 6:00 AM, 7:00 AM, 8:00 AM, custom.
 Then: weekdays only, or every day? Then "How do you want it?" Options: Print it (Recommended), Email it
-to me, Both, Just save the PDF. If printing, run `lpstat -p` (macOS or Linux) to list printers and let
-them pick one. Also ask "How long should it be?" Options: One page (Recommended, a two-minute read),
+to me, Both, Just save the PDF. If printing, list printers with `lpstat -p` on macOS/Linux or
+`Get-Printer | Select-Object Name, PrinterStatus` on Windows, and let them pick one. Windows automatic
+printing also needs SumatraPDF; check it is available or help them install it with their approval
+(see `references/windows.md`). Also ask "How long should it be?" Options: One page (Recommended, a two-minute read),
 Two pages (front and back, more room for news and to-dos), As long as it needs. Explain the trade-off
 in a phrase: shorter is faster to read, longer covers more. If emailing, confirm the address (their own address only) and check an email connector
 that can send is connected (for example Gmail).
@@ -99,7 +107,8 @@ always on / No thanks. If yes, follow "Keeping the computer awake" below.
 1. Create the paper folder with `editions/` inside, and copy `assets/template.html` to it.
 2. Write `config.md` from `references/config-template.md`, filled with their answers. This file is the
    single source of truth that every morning run reads, so be concrete: real calendar ids, database
-   ids, printer name, times, topics.
+   ids, printer name, times, topics, operating system, absolute paper/skill paths, and working render
+   and print commands for that operating system. Quote paths and printer names that contain spaces.
 3. Build a first edition right now (Build steps) so they see it, and print it if they chose printing.
    Ask what they would change, and edit `config.md` or the template accordingly.
 4. Schedule it. If the `create_scheduled_task` tool (Claude desktop app) is available, create a task
@@ -136,8 +145,9 @@ the computer just stays awake while plugged in.
    Tell them how to undo it: `launchctl bootout gui/$(id -u)/com.morningpaper.wake`, then delete the
    file.
 
-**Windows:** Settings > System > Power & battery > Screen and sleep: set "When plugged in, put my
-device to sleep after" to Never.
+**Windows:** Settings > System > Power & battery > Screen and sleep (or "Screen, sleep & hibernate
+timeouts"): set plugged-in sleep to Never. On Windows 10, use Settings > System > Power & sleep.
+Leave the reader signed in and Claude running. See `references/windows.md` for scheduling guidance.
 
 **Test it:** offer to schedule a one-off test run a few minutes from now, then let the computer sit
 idle and see whether the paper arrives. If it doesn't, check the power settings again before anything
@@ -149,6 +159,8 @@ else.
 
 1. Read `config.md` in the paper folder completely. Follow it exactly. If email delivery is on,
    first handle any unprocessed email replies (the Reply mode), then start building.
+   If an older config has only Unix commands but the computer is Windows, update just the local
+   paths and render/print commands using `references/windows.md`; preserve the editorial choices.
 2. Copy `template.html` to `editions/YYYY-MM-DD.html` (today, in the reader's time zone). Remove the
    sections they did not choose (each is wrapped in `SECTION:name` comment markers) and rebalance the
    layout so no empty boxes remain. On Mondays, if the write-in box is on, use its "This Week" variant.
@@ -158,18 +170,28 @@ else.
 4. **Never invent anything.** No made-up meetings, headlines, people or numbers. If a source fails,
    print a short honest line ("Calendar unavailable this morning") instead. A wrong fact on paper is
    worse than a gap, because the reader acts on it without checking.
-5. Render and check the page count with `scripts/render_pdf.sh editions/YYYY-MM-DD.html`. It prints
-   the number of pages. If it is over the length in `config.md` (default 1), trim words (shorter
+5. Render and check the page count. On macOS/Linux, use
+   `bash "<skill>/scripts/render_pdf.sh" "editions/YYYY-MM-DD.html"`. On Windows, use
+   `& "<skill>\scripts\render_pdf.ps1" -HtmlPath "editions\YYYY-MM-DD.html"` in PowerShell
+   (see `references/windows.md`). Use the configured absolute paths when running outside the paper
+   folder. Both scripts print the number of pages. If rendering fails, stop delivery and report the
+   error; do not deliver an older PDF. If the count is over the length in `config.md` (default 1), trim words (shorter
    lines, fewer items) and re-render. Trim before shrinking type: small text on paper is hard to read
    at 6 AM. For a longer paper, give sections more items and fuller stories rather than padding, and
    let each page break fall between sections, not through one. If printing two pages, print
-   double-sided when the printer supports it (`-o sides=two-sided-long-edge`).
-6. Deliver per `config.md` (see "Delivery" below). Print if configured: `lp -d <printer> -o media=Letter editions/YYYY-MM-DD.pdf` (use A4 if the
-   config says so). If it fails, check `lpstat -o` for stuck jobs from an earlier attempt, and clear
-   them with `cancel -a <printer>` before trying once more. Do not retry in a loop; the PDF is saved
-   either way.
+   double-sided when the printer supports it (`-o sides=two-sided-long-edge` on macOS/Linux,
+   `-Duplex` on Windows).
+6. Deliver per `config.md` (see "Delivery" below). Print if configured:
+   - macOS/Linux: `lp -d "<printer>" -o media=Letter "editions/YYYY-MM-DD.pdf"` (use A4 if configured).
+     If it fails, check `lpstat -o` for stuck jobs from an earlier attempt, and clear them with
+     `cancel -a <printer>` before trying once more.
+   - Windows: `& "<skill>\scripts\print_pdf.ps1" -PdfPath "editions\YYYY-MM-DD.pdf" -PrinterName "<printer>" -PaperSize Letter`
+     (use A4 if configured). Follow `references/windows.md` to inspect failed jobs; remove only the
+     confirmed failed edition's job, never the entire queue.
+   Do not retry in a loop or blindly resubmit a job that may have printed; the PDF is saved either way.
 7. If People Worth Meeting is on, append today's names to `people-log.md`.
-8. Finish with a two-line summary: did it print, and what was unavailable.
+8. Finish with a two-line summary: delivery status, and what was unavailable. A successful print
+   command means submitted to the printer, not confirmed physical output.
 
 ## Reply
 
@@ -195,7 +217,7 @@ handwritten note. Check for replies at the start of each Build too, and act on a
 ## Delivery
 
 Set in `config.md`. One or more of:
-- **Print:** `lp` to their printer, as in Build step 6.
+- **Print:** `lp` on macOS/Linux, or `scripts/print_pdf.ps1` with SumatraPDF on Windows, as in Build step 6.
 - **Email:** send the edition to the reader's own address, and only to them. It is their private
   briefing (it contains their inbox and calendar), so it never goes to anyone else. Subject:
   "<Paper name>, <Weekday, Month D>". Put the edition's content in the email body as simple HTML (the
@@ -212,4 +234,7 @@ send. Everything else stays read only.
 - `assets/template.html`: the fixed layout, with every section wrapped in `SECTION:name` markers.
 - `references/sections.md`: what each section shows, where its data comes from, and its rules.
 - `references/config-template.md`: the skeleton for the reader's `config.md`.
-- `scripts/render_pdf.sh`: renders HTML to PDF with headless Chrome and prints the page count.
+- `references/windows.md`: Windows setup, printing, scheduling and troubleshooting.
+- `scripts/render_pdf.sh`: macOS/Linux HTML-to-PDF rendering with headless Chrome and a page count.
+- `scripts/render_pdf.ps1`: Windows HTML-to-PDF rendering with headless Chrome/Edge/Chromium and a page count.
+- `scripts/print_pdf.ps1`: Windows automatic PDF printing with SumatraPDF.

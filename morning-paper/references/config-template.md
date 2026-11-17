@@ -3,6 +3,8 @@
 A printed morning newspaper for {{READER_NAME}}. Built by the scheduled task at {{TIME}}
 ({{DAYS}}), saved in `editions/`, and delivered by: {{print / email / both / save only}}.
 Email address (the reader's own, only): {{address or none}}.
+Computer: {{macOS / Linux / Windows}}.
+Paper folder (absolute path): {{path}}. Skill folder (absolute path): {{path}}.
 Edit this file to change the paper. Every morning run reads it fresh.
 
 ## House rules
@@ -37,10 +39,16 @@ List only the chosen sections. Delete the rest of this list.
 1. Read this file and `template.html`.
 2. Gather each section's data (rules in the skill's `references/sections.md`).
 3. Write `editions/YYYY-MM-DD.html` from the template, removing sections not listed above.
-4. Render and check pages: `bash <skill>/scripts/render_pdf.sh editions/YYYY-MM-DD.html`
+4. Render and check pages: {{exact command with quoted absolute paths: Bash `render_pdf.sh` on
+   macOS/Linux, or PowerShell `render_pdf.ps1 -HtmlPath` on Windows; see `references/windows.md`}}.
+   Stop delivery on render failure; do not send an older PDF.
 5. Deliver. Email (if on): send to {{address}} only, per the skill's "Delivery" section.
-   Print: {{`lp -d PRINTER -o media=Letter editions/YYYY-MM-DD.pdf` or "do not print, save only"}}.
-   If it fails, clear stuck jobs (`lpstat -o`, `cancel -a PRINTER`) and try once more, no loops.
+   Print: {{exact command for the chosen printer and paper size: `lp` on macOS/Linux, or PowerShell
+   `print_pdf.ps1 -PdfPath ... -PrinterName ... -PaperSize ...` on Windows; include duplex if supported
+   and chosen, or "do not print"}}.
+   If it fails, inspect the queue using the operating system's instructions in the skill. On Windows,
+   remove only this edition's confirmed failed job, never the whole queue. Try at most once more after
+   checking for an already printed/submitted copy; no loops.
 6. Append today's people to `people-log.md` (if the people section is on).
 
 ## Reply rules (photo of the paper, or a reply to the emailed edition)
